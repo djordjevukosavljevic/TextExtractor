@@ -17,7 +17,7 @@ Clone the Repository
 
 bash
 Copy code
-git clone https://github.com/yourusername/DragAndDropApp.git
+git clone https://github.com/djordjevukosavljevic/DragAndDropApp.git
 cd DragAndDropApp
 Compile the Application
 
