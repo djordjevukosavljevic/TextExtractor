@@ -31,6 +31,9 @@ public class DragAndDropApp extends JFrame {
 		new DropTarget(textArea, new FileDropTargetListener(textArea));
 
 		setVisible(true);
+
+        Scanner s = new Scanner(System.in);
+
 	}
 
 	private class FileDropTargetListener extends DropTargetAdapter {
@@ -121,6 +124,7 @@ public class DragAndDropApp extends JFrame {
 
 	public static void main(String[] args) {
 		SwingUtilities.invokeLater(() -> new DragAndDropApp());
+
 
 
 
