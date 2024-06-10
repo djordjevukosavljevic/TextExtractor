@@ -1,20 +1,23 @@
 package AICheckingApp.rs.ac.university;
+
 import javax.swing.*;
 import java.awt.*;
-import java.awt.datatransfer.*;
-import java.awt.dnd.*;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
+import java.awt.dnd.DnDConstants;
+import java.awt.dnd.DropTarget;
+import java.awt.dnd.DropTargetAdapter;
+import java.awt.dnd.DropTargetDropEvent;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.List;
-import java.util.Scanner;
-
-import org.apache.poi.hsmf.extractor.OutlookTextExtractor;
-import org.apache.poi.hwpf.HWPFDocument;
-import org.apache.poi.hwpf.extractor.WordExtractor;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.apache.poi.hwpf.HWPFDocument;
+import org.apache.poi.hwpf.extractor.WordExtractor;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
 
 public class DragAndDropApp extends JFrame {
 
@@ -31,9 +34,6 @@ public class DragAndDropApp extends JFrame {
 		new DropTarget(textArea, new FileDropTargetListener(textArea));
 
 		setVisible(true);
-
-        Scanner s = new Scanner(System.in);
-
 	}
 
 	private class FileDropTargetListener extends DropTargetAdapter {
@@ -49,15 +49,18 @@ public class DragAndDropApp extends JFrame {
 				event.acceptDrop(DnDConstants.ACTION_COPY);
 				Transferable transferable = event.getTransferable();
 				DataFlavor[] flavors = transferable.getTransferDataFlavors();
+
 				for (DataFlavor flavor : flavors) {
 					if (flavor.isFlavorJavaFileListType()) {
 						List<File> files = (List<File>) transferable.getTransferData(flavor);
 						for (File file : files) {
 							processFile(file);
 						}
+						event.dropComplete(true);
+						return;
 					}
 				}
-				event.dropComplete(true);
+				event.dropComplete(false);
 			} catch (Exception e) {
 				e.printStackTrace();
 				event.dropComplete(false);
@@ -65,18 +68,34 @@ public class DragAndDropApp extends JFrame {
 		}
 
 		private void processFile(File file) {
-			String extension = getFileExtension(file);
+			String fileName = file.getName();
+			String fileExtension = getFileExtension(file);
+
+			SwingUtilities.invokeLater(() -> {
+				textArea.append("File: " + fileName + " (." + fileExtension + ")\n");
+			});
+
 			try {
-				if ("pdf".equalsIgnoreCase(extension)) {
-					extractTextFromPDF(file);
-				} else if ("doc".equalsIgnoreCase(extension) || "docx".equalsIgnoreCase(extension)) {
-					extractTextFromWord(file);
-				} else {
-					textArea.append("Unsupported file type: " + extension + "\n");
+				switch (fileExtension.toLowerCase()) {
+					case "pdf":
+						extractTextFromPDF(file);
+						break;
+					case "doc":
+						extractTextFromDoc(file);
+						break;
+					case "docx":
+						extractTextFromDocx(file);
+						break;
+					default:
+						SwingUtilities.invokeLater(() -> {
+							textArea.append("Unsupported file type: " + fileExtension + "\n");
+						});
 				}
 			} catch (IOException e) {
-				textArea.append("Error processing file: " + file.getName() + "\n");
 				e.printStackTrace();
+				SwingUtilities.invokeLater(() -> {
+					textArea.append("Error processing file: " + fileName + "\n");
+				});
 			}
 		}
 
@@ -90,44 +109,47 @@ public class DragAndDropApp extends JFrame {
 			try (PDDocument document = PDDocument.load(file)) {
 				PDFTextStripper pdfStripper = new PDFTextStripper();
 				String text = pdfStripper.getText(document);
-				textArea.append("PDF Content of " + file.getName() + ":\n");
-				textArea.append(text + "\n");
+				SwingUtilities.invokeLater(() -> {
+					textArea.append("PDF Content of " + file.getName() + ":\n");
+					textArea.append(text + "\n");
+				});
 			}
 		}
 
-		private void extractTextFromWord(File file) throws IOException {
+		private void extractTextFromDoc(File file) throws IOException {
 			try (FileInputStream fis = new FileInputStream(file);
 				 HWPFDocument document = new HWPFDocument(fis);
-//				 XWPFDocument document = new XWPFDocument(fis);
 				 WordExtractor extractor = new WordExtractor(document)) {
 
 				String text = extractor.getText();
-
-				// Ensure textArea append happens on the EDT
 				SwingUtilities.invokeLater(() -> {
 					textArea.append("Word Content of " + file.getName() + ":\n");
 					textArea.append(text + "\n");
 				});
 
-
-			} catch (IOException e) {
-				// Handle IOException (file not found, unable to read, etc.)
-				throw e;
 			} catch (Exception e) {
-				// Handle other potential exceptions
 				e.printStackTrace();
 			}
 		}
 
+		private void extractTextFromDocx(File file) throws IOException {
+			try (FileInputStream fis = new FileInputStream(file);
+				 XWPFDocument document = new XWPFDocument(fis);
+				 XWPFWordExtractor extractor = new XWPFWordExtractor(document)) {
 
+				String text = extractor.getText();
+				SwingUtilities.invokeLater(() -> {
+					textArea.append("Word Content of " + file.getName() + ":\n");
+					textArea.append(text + "\n");
+				});
+
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
 	}
 
 	public static void main(String[] args) {
-		SwingUtilities.invokeLater(() -> new DragAndDropApp());
-
-
-
-
+		SwingUtilities.invokeLater(DragAndDropApp::new);
 	}
 }
-
